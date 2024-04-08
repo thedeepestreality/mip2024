@@ -1,6 +1,7 @@
 import pybullet as p
 import numpy as np
 from scipy.integrate import odeint
+from scipy.optimize import minimize
 
 def cost(traj):
     sz = len(traj)
@@ -19,10 +20,21 @@ def symplectic_euler(func, x0, t):
         x[i] = [q_next, p_next]
     return x
 
+def symplectic_euler_param(func, x0, t, a):
+    x = np.zeros((len(t), len(x0)))
+    x[0] = x0
+    for i in range(1, len(t)):
+        h = t[i] - t[i - 1]
+        q_prev, p_prev = x[i - 1]
+        p_next = p_prev + h * func([q_prev, p_prev], 0, a)[1]
+        q_next = q_prev + h * p_next
+        x[i] = [q_next, p_next]
+    return x
+
 g = 10
 L = 0.5
 dt = 1/240 # pybullet simulation step
-q0 = 0.5   # starting position (radian)
+q0 = np.deg2rad(15)   # starting position (radian)
 jIdx = 1
 maxTime = 5
 logTime = np.arange(0.0, maxTime, dt)
@@ -36,11 +48,11 @@ p.setGravity(0,0,-10)
 boxId = p.loadURDF("./pendulum.urdf", useFixedBase=True)
 
 # turn off internal damping
-# p.changeDynamics(boxId, 1, linearDamping=0, angularDamping=0)
+p.changeDynamics(boxId, 1, linearDamping=0, angularDamping=0)
 
 # go to the starting position
 p.setJointMotorControl2(bodyIndex=boxId, jointIndex=jIdx, targetPosition=q0, controlMode=p.POSITION_CONTROL)
-for _ in range(1000):
+for _ in range(100):
     p.stepSimulation()
 
 # turn off the motor for the free motion
@@ -57,6 +69,14 @@ def rp(x, t):
     return [x[1], 
             -g/L*np.sin(x[0])]
 
+def rp_lin(x, t):
+    return [x[1], 
+            -g/L*x[0]]
+
+def rp_param(x, t, a):
+    return [x[1], 
+            -a*np.sin(x[0])]
+
 theta = odeint(rp, [q0, 0], logTime)
 logTheor = theta[:,0]
 
@@ -69,20 +89,30 @@ logEuler = theta[:, 0]
 (l2, linf) = cost(logPos - logEuler)
 print(l2, linf)
 
+thetaLin = symplectic_euler(rp_lin, [q0, 0], logTime)
+logLin = thetaLin[:, 0]
+
+def l2_cost(a):
+    xx = symplectic_euler_param(rp_param, [q0, 0], logTime, a[0])
+    return cost(logPos-xx[:,0])[0]
+
+a0 = [0.9*g/L]
+print(f'init a: {a0}')
+res = minimize(l2_cost, a0)
+print(f'l2_res: {res.fun}')
+print(f'a: {res.x}')
+print(f'a_th: {g/L}')
+# a = res.x[0]
+
 import matplotlib.pyplot as plt
 
 plt.grid(True)
 plt.plot(logTime, logPos, label = "simPos")
 plt.plot(logTime, logTheor, label = "simTheor")
 plt.plot(logTime, logEuler, label = "simEuler")
+# plt.plot(logTime, logLin, label = "logLin")
 plt.legend()
 
 plt.show()
 
 p.disconnect()
-
-# res = minimize(l2_cost, a)
-# print(f'l2_res: {res.fun}')
-# print(f'k: {res.x}')
-# print(f'k_th: {a}')
-# a = res.x[0]
