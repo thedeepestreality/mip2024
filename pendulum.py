@@ -58,6 +58,7 @@ for _ in range(100):
 # turn off the motor for the free motion
 p.setJointMotorControl2(bodyIndex=boxId, jointIndex=jIdx, targetVelocity=0, controlMode=p.VELOCITY_CONTROL, force=0)
 for t in logTime[1:]:
+    # p.setJointMotorControl2(bodyIndex=boxId, jointIndex=jIdx, controlMode=p.TORQUE_CONTROL, force=0.1)
     p.stepSimulation()
 
     jointState = p.getJointState(boxId, jIdx)
@@ -116,3 +117,8 @@ plt.legend()
 plt.show()
 
 p.disconnect()
+
+# 1 add damping to rp and rp_lin
+# 2 add control torque to rp and rp_lin
+# 3 widen minimize to estimate a, damping coef and toqrue coef
+# 4 derive linear model from upper position and compare to sim (compare first 0.1 sec)
