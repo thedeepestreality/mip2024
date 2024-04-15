@@ -33,10 +33,14 @@ def symplectic_euler_param(func, x0, t, a):
 
 g = 10
 L = 0.5
+m = 1
+k = 0.5
+f = 0.1
 dt = 1/240 # pybullet simulation step
-q0 = np.deg2rad(15)   # starting position (radian)
+q0 = np.pi - np.deg2rad(5)   # starting position (radian)
+# q0 = np.deg2rad(15)   # starting position (radian)
 jIdx = 1
-maxTime = 5
+maxTime = 2
 logTime = np.arange(0.0, maxTime, dt)
 sz = len(logTime)
 logPos = np.zeros(sz)
@@ -52,13 +56,13 @@ p.changeDynamics(boxId, 1, linearDamping=0, angularDamping=0)
 
 # go to the starting position
 p.setJointMotorControl2(bodyIndex=boxId, jointIndex=jIdx, targetPosition=q0, controlMode=p.POSITION_CONTROL)
-for _ in range(100):
+for _ in range(1000):
     p.stepSimulation()
 
 # turn off the motor for the free motion
 p.setJointMotorControl2(bodyIndex=boxId, jointIndex=jIdx, targetVelocity=0, controlMode=p.VELOCITY_CONTROL, force=0)
 for t in logTime[1:]:
-    # p.setJointMotorControl2(bodyIndex=boxId, jointIndex=jIdx, controlMode=p.TORQUE_CONTROL, force=0.1)
+    p.setJointMotorControl2(bodyIndex=boxId, jointIndex=jIdx, controlMode=p.TORQUE_CONTROL, force=f)
     p.stepSimulation()
 
     jointState = p.getJointState(boxId, jIdx)
@@ -68,15 +72,19 @@ for t in logTime[1:]:
 
 def rp(x, t):
     return [x[1], 
-            -g/L*np.sin(x[0])]
+            -g/L*np.sin(x[0]) - k/(m*L*L)*x[1] + f/(m*L*L)]
 
 def rp_lin(x, t):
-    return [x[1], 
+    return [x[1],
             -g/L*x[0]]
 
 def rp_param(x, t, a):
     return [x[1], 
             -a*np.sin(x[0])]
+
+def rp_lin_up(x, t):
+    return [x[1],
+            g/L*(x[0]-np.pi) - k/(m*L*L)*x[1] + f/(m*L*L)]
 
 theta = odeint(rp, [q0, 0], logTime)
 logTheor = theta[:,0]
@@ -90,7 +98,7 @@ logEuler = theta[:, 0]
 (l2, linf) = cost(logPos - logEuler)
 print(l2, linf)
 
-thetaLin = symplectic_euler(rp_lin, [q0, 0], logTime)
+thetaLin = symplectic_euler(rp_lin_up, [q0, 0], logTime)
 logLin = thetaLin[:, 0]
 
 def l2_cost(a):
@@ -111,7 +119,7 @@ plt.grid(True)
 plt.plot(logTime, logPos, label = "simPos")
 plt.plot(logTime, logTheor, label = "simTheor")
 plt.plot(logTime, logEuler, label = "simEuler")
-# plt.plot(logTime, logLin, label = "logLin")
+plt.plot(logTime, logLin, label = "logLin")
 plt.legend()
 
 plt.show()
