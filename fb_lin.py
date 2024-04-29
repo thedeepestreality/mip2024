@@ -3,7 +3,7 @@ import numpy as np
 
 dt = 1/240 # pybullet simulation step
 th0 = 0.1
-thd = 0.5
+thd = 1.0
 jIdx = 1
 kp = 20
 kd = 10

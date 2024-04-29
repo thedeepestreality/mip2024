@@ -51,7 +51,8 @@ for t in logTime[1:]:
     J = np.array([[-L*np.cos(th1)-L*np.cos(th1+th2), -L*np.cos(th1+th2)], 
                   [L*np.sin(th1)+L*np.sin(th1+th2), L*np.sin(th1+th2)]])
     
-    w = 10*np.linalg.inv(J) @ -np.array([[xSim2-xd],[zSim2-zd]])
+    # w = 10*np.linalg.inv(J) @ -np.array([[xSim2-xd],[zSim2-zd]])
+    w = 10*np.linalg.inv(J) @ np.array([[0.1],[0]])
     p.setJointMotorControlArray(bodyIndex=boxId, jointIndices=jIdx, targetVelocities=[w[0,0],w[1,0]], controlMode=p.VELOCITY_CONTROL)
     
     p.stepSimulation()
@@ -61,7 +62,7 @@ for t in logTime[1:]:
     dth1 = jointState[0][1]
     logVel[idx] = dth1
     idx += 1
-    logPos[idx] = th1
+    logPos[idx] = xSim2
     time.sleep(dt)
 
 logVel[idx] = p.getJointStates(boxId, jIdx)[0][1]
